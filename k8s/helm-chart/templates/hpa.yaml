@@ -1,0 +1,22 @@
+{{- if .Values.autoscaling.enabled }}{{/* Only render an HPA when autoscaling is enabled. */}}
+apiVersion: autoscaling/v2 # Use the current stable autoscaling API.
+kind: HorizontalPodAutoscaler # Let Kubernetes adjust the Deployment replica count.
+metadata: # Resource name and labels are declared below.
+  name: {{ include "learning-web.fullname" . }} # Target the same release name as the Deployment.
+  labels: # Standard labels identify the HPA.
+    {{- include "learning-web.labels" . | nindent 4 }}{{/* Attach standard chart labels. */}}
+spec: # Describe the target and scaling bounds.
+  scaleTargetRef: # Point the autoscaler at a scalable Kubernetes workload.
+    apiVersion: apps/v1 # Identify the API version of the target workload.
+    kind: Deployment # Scale the parent chart's Deployment.
+    name: {{ include "learning-web.fullname" . }} # Point to the matching Deployment name.
+  minReplicas: {{ .Values.autoscaling.minReplicas }} # Set the lower bound for scaling.
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }} # Set the upper bound for scaling.
+  metrics: # Define the observed values that drive scaling.
+    - type: Resource # Measure a built-in Kubernetes resource metric.
+      resource: # Read a built-in resource metric from Pod usage.
+        name: cpu # Compare average CPU use with the requested CPU amount.
+        target: # Specify the desired average utilization level.
+          type: Utilization # Interpret the target as a percentage of CPU requests.
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }} # Set the CPU scale target.
+{{- end }}{{/* End the optional HPA resource. */}}

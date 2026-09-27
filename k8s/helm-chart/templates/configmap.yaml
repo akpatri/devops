@@ -1,0 +1,12 @@
+apiVersion: v1 # ConfigMaps use the core Kubernetes API.
+kind: ConfigMap # Store non-secret configuration as key/value text.
+metadata: # Resource name, labels, and annotations are declared below.
+  name: {{ include "learning-web.fullname" . }} # Use the shared release-scoped resource name.
+  labels: # Standard Helm labels support filtering and release inspection.
+    {{- include "learning-web.labels" . | nindent 4 }}{{/* Attach standard chart labels. */}}
+data: # Store each non-secret configuration item as text.
+{{- range $key, $value := .Values.config }}{{/* Turn each config entry into string data. */}}
+  {{ $key }}: {{ printf "%v" $value | quote }} # ConfigMap values must be strings.
+{{- end }}{{/* End the config map iteration. */}}
+  # This value demonstrates the child's imported exports.data.greeting entry.
+  subchartGreeting: {{ dig "importedDemo" "greeting" "Subchart is disabled" .Values | quote }} # Show a fallback when the child is disabled.

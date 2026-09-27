@@ -1,0 +1,239 @@
+# Chart.yaml is the required metadata file for a Helm chart.  # Chart metadata
+# REQUIRED fields: apiVersion, name, and version.  # Required fields
+# OPTIONAL fields: kubeVersion, description, type, keywords, home, sources, dependencies, maintainers, icon, appVersion, deprecated, and annotations.  # Optional fields
+# version identifies the Helm chart; appVersion identifies the application inside the chart.  # Important distinction
+# Chart version follows SemVer conventions and is used in the packaged chart name.  # Versioning
+# Example: name "nginx" + version "1.2.3" becomes nginx-1.2.3.tgz.  # Package naming
+# apiVersion v2 is for charts requiring Helm 3 or later; v1 is the older chart format.  # Chart API
+# In v2, dependencies are defined here instead of the old requirements.yaml file.  # Dependency change
+# The type field distinguishes application and library charts.  # Chart type
+# Custom metadata should be placed inside annotations.  # Custom metadata
+# The Helm documentation page currently notes that its content has not yet been updated for Helm 4.  # Documentation note
+
+apiVersion: v2  # REQUIRED: Chart API version; v2 is used for Helm 3+ charts
+
+name: learning-web  # REQUIRED: Name used in labels and as the default part of resource names
+
+version: "1.2.3"  # REQUIRED: Version of the Helm chart; used as the chart release marker
+
+
+kubeVersion: ">=1.25.0-0"  # OPTIONAL: This demo uses stable APIs available in modern Kubernetes
+
+description: "A commented learning chart demonstrating Helm templates and a local subchart"  # OPTIONAL: Single-sentence description of the project
+
+type: application  # OPTIONAL: Chart type; application is the default and is the normal installable chart
+
+
+keywords:  # OPTIONAL: List of keywords describing the project
+  - nginx  # Keyword describing the application
+  - web-server  # Keyword describing the application's purpose
+  - http  # Keyword describing the application's technology
+
+
+home: "https://helm.sh/"  # OPTIONAL: URL of the project's home page
+
+sources:  # OPTIONAL: List of URLs containing the project's source code
+  - "https://github.com/example/nginx"  # Source-code repository
+  - "https://gitlab.com/example/nginx"  # Another possible source-code location
+
+
+dependencies:  # OPTIONAL: Dependencies are rendered as part of the parent release
+  - name: demo-subchart  # Must match charts/demo-subchart/Chart.yaml
+    version: "0.1.0"  # Must satisfy the child chart's version
+    alias: demoSubchart  # Values for this child live under .Values.demoSubchart
+    condition: demoSubchart.enabled  # Set this value to false to skip rendering the child
+    tags:  # A tag can switch a group of dependencies together
+      - learning-examples  # Disable with --set tags.learning-examples=false
+    import-values:  # Copy the child's exported data into the parent's values tree
+      - child: data  # Read the child chart's exports.data section
+        parent: importedDemo  # Parent templates can read .Values.importedDemo.greeting
+    # repository is omitted because this child chart is already under charts/.
+
+
+maintainers:  # OPTIONAL: List of people maintaining the chart
+
+  - name: "Jane Doe"  # REQUIRED for each maintainer: Maintainer's name
+    email: "jane@example.com"  # OPTIONAL for each maintainer: Maintainer's email address
+    url: "https://example.com/jane"  # OPTIONAL for each maintainer: URL for the maintainer
+
+
+icon: "https://example.com/nginx.png"  # OPTIONAL: URL to an SVG or PNG image used as the chart icon
+
+appVersion: "1.27.5"  # OPTIONAL: Version of the NGINX application contained in the chart
+
+deprecated: false  # OPTIONAL: Boolean indicating whether the chart is deprecated
+
+annotations:  # OPTIONAL: Custom metadata stored as key/value pairs
+  example: "custom metadata"  # Example custom annotation
+  team: "platform"  # Example annotation identifying the responsible team
+  purpose: "web-server"  # Example annotation describing the chart's purpose
+
+
+# ================================================================
+# DEPENDENCY EXAMPLE: CONDITION
+# ================================================================
+
+# dependencies:  # OPTIONAL: Dependency definition
+#   - name: subchart1  # Dependency chart name
+#     repository: "http://localhost:10191"  # Dependency repository
+#     version: "0.1.0"  # Dependency version
+#     condition: "subchart1.enabled,global.subchart1.enabled"  # First valid condition path controls the dependency
+
+
+# ================================================================
+# DEPENDENCY EXAMPLE: TAGS
+# ================================================================
+
+# dependencies:  # OPTIONAL: Dependency definition
+#   - name: subchart1  # Dependency chart name
+#     repository: "http://localhost:10191"  # Dependency repository
+#     version: "0.1.0"  # Dependency version
+#     tags:  # OPTIONAL: Labels used to group dependencies
+#       - front-end  # Front-end dependency group
+#       - subchart1  # Dependency-specific group
+
+
+# ================================================================
+# DEPENDENCY EXAMPLE: CONDITION + TAGS
+# ================================================================
+
+# dependencies:  # OPTIONAL: Dependency definitions
+#   - name: subchart1  # First dependency
+#     repository: "http://localhost:10191"  # Repository of the dependency
+#     version: "0.1.0"  # Version of the dependency
+#     condition: "subchart1.enabled,global.subchart1.enabled"  # Condition paths checked from left to right
+#     tags:  # Tags associated with the dependency
+#       - front-end  # Front-end group
+#       - subchart1  # Dependency-specific group
+#
+#   - name: subchart2  # Second dependency
+#     repository: "http://localhost:10191"  # Repository of the dependency
+#     version: "0.1.0"  # Version of the dependency
+#     condition: "subchart2.enabled,global.subchart2.enabled"  # Condition paths controlling this dependency
+#     tags:  # Tags associated with the dependency
+#       - back-end  # Back-end group
+#       - subchart2  # Dependency-specific group
+
+
+# ================================================================
+# DEPENDENCY EXAMPLE: IMPORT-VALUES USING EXPORTS
+# ================================================================
+
+# dependencies:  # OPTIONAL: Dependency definitions
+#   - name: subchart  # Child chart whose values will be imported
+#     repository: "http://localhost:10191"  # Child chart repository
+#     version: "0.1.0"  # Child chart version
+#     import-values:  # Values to import from the child chart
+#       - data  # Imports the "data" key from the child's exports section
+
+
+# ================================================================
+# DEPENDENCY EXAMPLE: IMPORT-VALUES USING CHILD/PARENT
+# ================================================================
+
+# dependencies:  # OPTIONAL: Dependency definitions
+#   - name: subchart1  # Child chart
+#     repository: "http://localhost:10191"  # Child chart repository
+#     version: "0.1.0"  # Child chart version
+#     import-values:  # Mapping from child values to parent values
+#       - child: default.data  # Source path inside the child chart
+#         parent: myimports  # Destination path inside the parent chart
+
+
+# ================================================================
+# DEPENDENCY EXAMPLE: ALIAS
+# ================================================================
+
+# dependencies:  # OPTIONAL: Dependency definitions
+#   - name: subchart  # Original dependency chart name
+#     repository: "http://localhost:10191"  # Repository containing the chart
+#     version: "0.1.0"  # Version of the chart
+#     alias: new-subchart-1  # First name used for this dependency
+#
+#   - name: subchart  # Same dependency chart can be used again
+#     repository: "http://localhost:10191"  # Same repository
+#     version: "0.1.0"  # Same version
+#     alias: new-subchart-2  # Second name used for this dependency
+#
+#   - name: subchart  # Same dependency chart again
+#     repository: "http://localhost:10191"  # Same repository
+#     version: "0.1.0"  # Same version
+#     # No alias means the dependency keeps its original name
+
+
+# ================================================================
+# VERSION EXAMPLES
+# ================================================================
+
+# version: "1.2.3"  # Standard SemVer chart version
+# version: "1.2.3-alpha.1"  # SemVer pre-release version
+# version: "1.2.3-alpha.1+ef365"  # SemVer version with build metadata
+# version: "1.2"  # Helm can attempt to coerce this into 1.2.0
+# version: "v1.2"  # Helm can attempt to coerce this into a valid SemVer
+#
+# nginx-1.2.3.tgz  # Example package name generated from chart name + chart version
+
+
+# ================================================================
+# KUBERNETES VERSION CONSTRAINT EXAMPLES
+# ================================================================
+
+# kubeVersion: ">=1.13.0 <1.15.0"  # AND: Kubernetes must satisfy both constraints
+
+# kubeVersion: ">=1.13.0 <1.14.0 || >=1.14.1 <1.15.0"  # OR: either range is accepted; 1.14.0 is excluded
+
+# kubeVersion: "1.1 - 2.3.4"  # Hyphen range: equivalent to >=1.1 and <=2.3.4
+
+# kubeVersion: "1.2.x"  # Wildcard range: equivalent to >=1.2.0 and <1.3.0
+
+# kubeVersion: "~1.2.3"  # Tilde range: patch-level changes are allowed below 1.3.0
+
+# kubeVersion: "^1.2.3"  # Caret range: compatible minor versions are allowed below 2.0.0
+
+# kubeVersion: ">=1.2.0"  # Comparison operator: Kubernetes 1.2.0 or newer
+
+
+# ================================================================
+# APPVERSION vs VERSION
+# ================================================================
+
+# version: "1.2.3"  # Version of the Helm chart itself
+# appVersion: "8.2.1"  # Version of the application packaged by the chart
+#
+# version changes when the CHART changes.  # Chart release concept
+# appVersion describes which APPLICATION version the chart contains.  # Application version concept
+# appVersion is informational and does not affect chart version calculations.  # appVersion behavior
+# Quotes around appVersion are recommended because YAML may otherwise interpret some values unexpectedly.  # YAML parsing
+
+
+# ================================================================
+# CHART TYPES
+# ================================================================
+
+# type: application  # Default type; normal installable chart containing Kubernetes resources
+
+# type: library  # Reusable chart containing utilities/functions for other charts; not installed as a standalone application
+
+
+# ================================================================
+# DEPRECATION
+# ================================================================
+
+# deprecated: true  # Marks this chart version as deprecated
+#
+# Typical repository workflow:  # Deprecation workflow
+# 1. Mark the chart as deprecated and bump the version.  # First step
+# 2. Release the new chart version to the chart repository.  # Second step
+# 3. Remove the chart from the source repository.  # Third step
+#
+# If the latest repository version is deprecated, the chart as a whole is considered deprecated.  # Repository behavior
+# A later non-deprecated version can reuse the chart name.  # Name reuse
+
+
+# ================================================================
+# IMPORTANT HELM 3.3.2+ RULE
+# ================================================================
+
+# foo: "bar"  # DO NOT add arbitrary unsupported top-level fields to Chart.yaml
+# annotations:  # USE annotations for custom metadata
+#   foo: "bar"  # Custom metadata belongs here

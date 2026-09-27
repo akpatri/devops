@@ -1,0 +1,6 @@
+apiVersion: v2 # Use the current Helm chart metadata format.
+name: demo-subchart # This name must match the parent's dependency declaration.
+description: A tiny local child chart for demonstrating Helm dependencies # Summarize the example's purpose.
+type: application # This child chart renders Kubernetes resources.
+version: 0.1.0 # This must satisfy the parent dependency version constraint.
+appVersion: "1.0.0" # Example application version; this is not the chart version.

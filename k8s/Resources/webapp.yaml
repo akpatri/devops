@@ -1,0 +1,83 @@
+apiVersion: v1 # ConfigMaps use the core Kubernetes API.
+kind: ConfigMap # Store non-secret settings as text.
+metadata: # Identify this ConfigMap.
+  name: web-demo-config # This name is referenced by the Deployment below.
+  namespace: learning-resources # Keep the ConfigMap with the example workload.
+data: # Put application settings under this key.
+  APP_MESSAGE: "Hello from a Kubernetes ConfigMap" # NGINX does not display this value; it demonstrates environment injection.
+--- # Start the Deployment document.
+apiVersion: apps/v1 # Deployments use the apps API group.
+kind: Deployment # Keep the requested number of Pods running.
+metadata: # Identify this Deployment.
+  name: web-demo # Use this name when checking or scaling the workload.
+  namespace: learning-resources # Place the Deployment in the example namespace.
+spec: # Describe the desired Deployment state.
+  replicas: 2 # Run two matching Pods for availability practice.
+  selector: # Tell the Deployment which Pods it owns.
+    matchLabels: # These labels must match the Pod template labels below.
+      app: web-demo # Select only Pods for this sample app.
+  template: # Describe each Pod the Deployment creates.
+    metadata: # Add labels to each created Pod.
+      labels: # The Deployment selector and Service use these labels.
+        app: web-demo # Keep this value identical to both selectors.
+    spec: # Define the containers and volumes inside each Pod.
+      securityContext: # Apply security defaults to every container in the Pod.
+        runAsNonRoot: true # Do not run the application as the root user.
+        runAsUser: 101 # Use the non-root user from the NGINX unprivileged image.
+      containers: # List the containers that run in this Pod.
+        - name: web # Give the main container a readable name.
+          image: nginxinc/nginx-unprivileged:1.27.5-alpine # Use a public NGINX image configured for non-root use.
+          imagePullPolicy: IfNotPresent # Reuse the image if it is already cached on the node.
+          ports: # Declare the port opened by the web container.
+            - name: http # Give the port a name used by probes and the Service.
+              containerPort: 8080 # The unprivileged NGINX image listens on port 8080.
+              protocol: TCP # HTTP traffic uses TCP.
+          envFrom: # Load environment variables from an existing Kubernetes object.
+            - configMapRef: # Use the ConfigMap created above as the environment source.
+                name: web-demo-config # Match the ConfigMap metadata.name exactly.
+          securityContext: # Apply restrictions to this container.
+            allowPrivilegeEscalation: false # Do not allow processes to gain extra privileges.
+            readOnlyRootFilesystem: true # Prevent writes to the container's root filesystem.
+            capabilities: # Configure Linux capabilities for this process.
+              drop: # Remove capabilities the web server does not need.
+                - ALL # Drop every Linux capability.
+          livenessProbe: # Restart the container if it stops responding.
+            httpGet: # Test the web server with an HTTP request.
+              path: / # Request the default NGINX page.
+              port: http # Use the named container port declared above.
+            initialDelaySeconds: 5 # Wait briefly before the first health check.
+            periodSeconds: 10 # Repeat the liveness check every ten seconds.
+          readinessProbe: # Keep traffic away until the web server is ready.
+            httpGet: # Test readiness with an HTTP request.
+              path: / # Request the default NGINX page.
+              port: http # Use the same named container port.
+            initialDelaySeconds: 2 # Give the container time to start before checking.
+            periodSeconds: 5 # Repeat the readiness check every five seconds.
+          resources: # Set example CPU and memory requests and limits.
+            requests: # Reserve a small amount of resources for scheduling.
+              cpu: 100m # Request one tenth of a CPU core.
+              memory: 64Mi # Request 64 mebibytes of memory.
+            limits: # Stop the container from using more than these amounts.
+              cpu: 250m # Limit CPU use to one quarter of a core.
+              memory: 128Mi # Limit memory use to 128 mebibytes.
+          volumeMounts: # Mount writable temporary storage into the read-only container.
+            - name: tmp # Match the volume name declared under Pod volumes.
+              mountPath: /tmp # NGINX uses this directory for temporary files.
+      volumes: # Define the storage sources available to Pod containers.
+        - name: tmp # Give the temporary volume the name used by volumeMounts.
+          emptyDir: {} # Create temporary storage that lasts only as long as this Pod.
+--- # Start the Service document.
+apiVersion: v1 # Services use the core Kubernetes API.
+kind: Service # Give the Pods a stable in-cluster network endpoint.
+metadata: # Identify this Service.
+  name: web-demo # Use this name for DNS access and port-forwarding.
+  namespace: learning-resources # Keep the Service with its Pods.
+spec: # Describe the network port and matching Pods.
+  type: ClusterIP # Expose this Service inside the cluster only.
+  selector: # Send traffic to Pods with these labels.
+    app: web-demo # This must match the Deployment Pod template label.
+  ports: # Define the port clients use to reach the web server.
+    - name: http # Give the Service port a readable name.
+      port: 80 # Accept connections on the standard HTTP port.
+      targetPort: http # Forward to the named container port 8080.
+      protocol: TCP # Use TCP for HTTP connections.

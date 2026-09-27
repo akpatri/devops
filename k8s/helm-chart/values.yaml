@@ -1,0 +1,279 @@
+# values.yaml  # Default configuration values supplied by the chart
+# This file contains dummy values for learning  # Example configuration
+# Helm does not require these exact keys  # Chart author defines the keys
+# Templates access these values through .Values  # Values are consumed by templates
+# Users can override these values during helm install or upgrade  # User-specific configuration
+
+# -----------------------------------------------------------------------------
+# GLOBAL VALUES  # Values shared across the chart and subcharts
+# -----------------------------------------------------------------------------
+
+global:  # Global configuration
+  imageRegistry: "docker.io"  # Registry prepended to images; set empty to use image.registry as-is
+  imagePullSecrets: []  # Optional pull-secret names shared by this chart and its subcharts
+  storageClass: ""  # Empty lets Kubernetes choose the cluster's default StorageClass
+
+# -----------------------------------------------------------------------------
+# APPLICATION CONFIGURATION  # Main application settings
+# -----------------------------------------------------------------------------
+
+replicaCount: 2  # Number of web Pods when autoscaling.enabled is false
+
+# -----------------------------------------------------------------------------
+# IMAGE CONFIGURATION  # Container image settings
+# -----------------------------------------------------------------------------
+
+image:  # Container image configuration
+  registry: "docker.io"  # Container image registry
+  repository: "nginxinc/nginx-unprivileged"  # Public image that listens on an unprivileged port
+  tag: "1.27.5-alpine"  # Pin a reproducible demo image tag matching Chart.yaml appVersion
+  digest: ""  # No image digest is specified
+  pullPolicy: IfNotPresent  # Pull image only when it is not already available
+
+# -----------------------------------------------------------------------------
+# IMAGE PULL SECRETS  # Credentials for private image registries
+# -----------------------------------------------------------------------------
+
+imagePullSecrets: []  # Add { name: my-registry-secret } only when using a private registry
+
+# -----------------------------------------------------------------------------
+# NAME OVERRIDES  # Optional resource naming customization
+# -----------------------------------------------------------------------------
+
+nameOverride: ""  # Optional short name override; empty uses the chart name
+fullnameOverride: ""  # Optional complete resource-name override; empty includes release + chart
+
+# -----------------------------------------------------------------------------
+# SERVICE ACCOUNT  # Kubernetes ServiceAccount configuration
+# -----------------------------------------------------------------------------
+
+serviceAccount:  # ServiceAccount configuration
+  create: true  # Create a ServiceAccount
+  automount: true  # Automatically mount ServiceAccount credentials
+  annotations:  # ServiceAccount annotations
+    example.com/team: "platform"  # Example custom annotation
+  name: ""  # Optional explicit name; empty generates one from the release and chart
+
+# -----------------------------------------------------------------------------
+# POD CONFIGURATION  # Configuration applied to Pods
+# -----------------------------------------------------------------------------
+
+podAnnotations:  # Pod annotations
+  example.com/owner: "platform-team"  # Example ownership annotation
+
+podLabels:  # Additional Pod labels
+  environment: "production"  # Identify the environment
+  application: "webapp"  # Identify the application
+
+podSecurityContext:  # Security settings applied to the Pod
+  runAsNonRoot: true  # Run the Pod without root privileges
+  runAsUser: 1000  # User ID used by the application
+  fsGroup: 2000  # Group ID used for mounted volumes
+
+# -----------------------------------------------------------------------------
+# CONTAINER SECURITY  # Security settings for the container
+# -----------------------------------------------------------------------------
+
+securityContext:  # Container security configuration
+  allowPrivilegeEscalation: false  # Prevent privilege escalation
+  readOnlyRootFilesystem: true  # Make the root filesystem read-only
+  capabilities:  # Linux capabilities configuration
+    drop:  # Capabilities to remove
+      - ALL  # Remove all Linux capabilities
+
+# -----------------------------------------------------------------------------
+# SERVICE  # Kubernetes Service configuration
+# -----------------------------------------------------------------------------
+
+service:  # Service configuration
+  type: ClusterIP  # Expose the application internally
+  port: 80  # Cluster-facing Service port
+  targetPort: 8080  # Application container port
+  protocol: TCP  # Network protocol
+  annotations:  # Service annotations
+    example.com/environment: "production"  # Example Service annotation
+
+# -----------------------------------------------------------------------------
+# INGRESS  # External HTTP/HTTPS access
+# -----------------------------------------------------------------------------
+
+ingress:  # Ingress configuration
+  enabled: false  # Enable only after an Ingress controller is installed in the cluster
+  className: "nginx"  # Use the nginx IngressClass
+  annotations:  # Ingress annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Redirect HTTP to HTTPS
+  hosts:  # Host configuration
+    - host: "webapp.example.com"  # Application hostname
+      paths:  # URL paths
+        - path: "/"  # Root URL path
+          pathType: Prefix  # Match this path and its subpaths
+  tls:  # TLS configuration
+    - secretName: "webapp-tls"  # Secret containing the TLS certificate
+      hosts:  # Hostnames covered by the certificate
+        - "webapp.example.com"  # TLS hostname
+
+# -----------------------------------------------------------------------------
+# RESOURCES  # CPU and memory configuration
+# -----------------------------------------------------------------------------
+
+resources:  # Container resource configuration
+  requests:  # Minimum resources requested
+    cpu: "250m"  # Request 0.25 CPU
+    memory: "256Mi"  # Request 256 MiB memory
+  limits:  # Maximum resources allowed
+    cpu: "1"  # Limit CPU to 1 core
+    memory: "512Mi"  # Limit memory to 512 MiB
+
+# -----------------------------------------------------------------------------
+# AUTOSCALING  # Horizontal Pod Autoscaler configuration
+# -----------------------------------------------------------------------------
+
+autoscaling:  # HPA configuration
+  enabled: false  # Enable only when the cluster has metrics-server installed
+  minReplicas: 3  # Minimum number of Pods
+  maxReplicas: 10  # Maximum number of Pods
+  targetCPUUtilizationPercentage: 70  # Scale when average CPU reaches 70 percent
+
+# -----------------------------------------------------------------------------
+# HEALTH CHECKS  # Kubernetes container health probes
+# -----------------------------------------------------------------------------
+
+livenessProbe:  # Check whether the application is alive
+  httpGet:  # Perform an HTTP health check
+    path: "/"  # NGINX serves its default page at the root path
+    port: 8080  # Application port
+
+readinessProbe:  # Check whether the application can receive traffic
+  httpGet:  # Perform an HTTP readiness check
+    path: "/"  # A successful HTTP response means the Pod can receive traffic
+    port: 8080  # Application port
+
+# -----------------------------------------------------------------------------
+# VOLUMES  # Additional Kubernetes volumes
+# -----------------------------------------------------------------------------
+
+volumes:  # Volumes mounted into the Pod
+  - name: app-config  # Volume name
+    configMap:  # Use a ConfigMap as the volume source
+      name: ""  # Empty asks the template to use the ConfigMap generated by this chart
+  - name: tmp  # NGINX uses /tmp for its PID and temporary request files
+    emptyDir: {}  # Ephemeral storage shared only with this Pod
+
+# -----------------------------------------------------------------------------
+# VOLUME MOUNTS  # Container filesystem mounts
+# -----------------------------------------------------------------------------
+
+volumeMounts:  # Volume mount configuration
+  - name: app-config  # Volume to mount
+    mountPath: "/etc/webapp"  # Directory inside the container
+    readOnly: true  # Mount the configuration as read-only
+  - name: tmp  # Match the second entry under volumes
+    mountPath: "/tmp"  # Writable temporary area for the read-only-root container
+
+# -----------------------------------------------------------------------------
+# NODE SCHEDULING  # Controls where Pods run
+# -----------------------------------------------------------------------------
+
+nodeSelector: {}  # Empty means any suitable node may be selected
+
+tolerations: []  # Add tolerations only when the cluster uses matching node taints
+
+affinity: {}  # Empty means no extra affinity rules constrain scheduling
+
+# -----------------------------------------------------------------------------
+# POD DISTRIBUTION  # Controls how Pods are distributed
+# -----------------------------------------------------------------------------
+
+topologySpreadConstraints: []  # Add constraints using the selector labels generated by the chart
+
+# -----------------------------------------------------------------------------
+# EXTRA ENVIRONMENT VARIABLES  # Application environment variables
+# -----------------------------------------------------------------------------
+
+env:  # Environment variables
+  - name: APP_ENV  # Environment variable name
+    value: "production"  # Environment variable value
+  - name: LOG_LEVEL  # Environment variable name
+    value: "info"  # Environment variable value
+  - name: APP_PORT  # Environment variable name
+    value: "8080"  # Environment variable value
+
+# -----------------------------------------------------------------------------
+# ENVIRONMENT FROM CONFIGMAP OR SECRET  # External environment sources
+# -----------------------------------------------------------------------------
+
+envFrom: []  # Optional references to existing ConfigMaps or Secrets
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION  # Application-specific configuration
+# -----------------------------------------------------------------------------
+
+config:  # Application configuration
+  logLevel: "info"  # Application logging level
+  port: 8080  # Application listening port
+  featureFlag: true  # Enable example application feature
+  environment: "production"  # Application environment
+
+# -----------------------------------------------------------------------------
+# SECRETS  # Application secret configuration
+# -----------------------------------------------------------------------------
+
+secrets:  # Secret values
+  username: "admin"  # Example application username
+  password: "not-a-real-password"  # Dummy only; never put real credentials in values.yaml
+
+# -----------------------------------------------------------------------------
+# PERSISTENT STORAGE  # PersistentVolumeClaim configuration
+# -----------------------------------------------------------------------------
+
+persistence:  # Persistent storage configuration
+  enabled: false  # Enable only when the cluster can provision PersistentVolumes
+  storageClass: ""  # Empty uses the cluster's default StorageClass
+  mountPath: "/var/lib/webapp"  # Container path used when persistence.enabled is true
+  accessModes:  # Volume access modes
+    - ReadWriteOnce  # Volume can be mounted read/write by one node
+  size: "20Gi"  # Request 20 GiB of storage
+  annotations:  # PVC annotations
+    example.com/backup: "daily"  # Example backup annotation
+
+# -----------------------------------------------------------------------------
+# EXTRA CONTAINERS  # Optional sidecar containers
+# -----------------------------------------------------------------------------
+
+sidecars: []  # Optional sidecar containers; each entry needs at least name and image
+
+# -----------------------------------------------------------------------------
+# INIT CONTAINERS  # Containers that run before the main container
+# -----------------------------------------------------------------------------
+
+initContainers: []  # Optional containers that must finish before NGINX starts
+
+# -----------------------------------------------------------------------------
+# EXTRA POD CONFIGURATION  # Additional Pod settings
+# -----------------------------------------------------------------------------
+
+hostAliases: []  # Optional entries added to the Pod's /etc/hosts file
+
+dnsConfig: {}  # Optional DNS overrides; empty keeps the cluster defaults
+
+dnsPolicy: "ClusterFirst"  # Use Kubernetes cluster DNS
+hostNetwork: false  # Do not use the host network namespace
+
+# -----------------------------------------------------------------------------
+# COMMAND AND ARGUMENTS  # Container startup configuration
+# -----------------------------------------------------------------------------
+
+command: []  # Empty preserves the image entrypoint; override only when you know its contract
+args: []  # Empty preserves the image's default arguments
+
+# -----------------------------------------------------------------------------
+# EXTRA MANIFESTS  # Additional Kubernetes resources
+# -----------------------------------------------------------------------------
+
+extraObjects:  # Additional Kubernetes resources
+  - apiVersion: v1  # Kubernetes API version
+    kind: ConfigMap  # Kubernetes resource type
+    metadata:  # Resource metadata
+      name: extra-webapp-config  # ConfigMap name
+    data:  # ConfigMap data
+      example: "hello-world"  # Example configuration value

@@ -1,0 +1,9 @@
+# The parent dependency aliases this chart to demoSubchart, so set these values
+# in the parent as demoSubchart.enabled and demoSubchart.message.
+enabled: true # The parent dependency condition includes this chart when true.
+message: "This ConfigMap was rendered by the child chart." # A parent override can replace this message.
+
+# A parent dependency can import this exported map into its own values tree.
+exports: # Mark selected child values as available for parent import-values.
+  data: # This export key matches child: data in the parent dependency.
+    greeting: "Hello from the local demo subchart" # The parent imports this greeting into importedDemo.

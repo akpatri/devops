@@ -1,0 +1,35 @@
+{{- if .Values.ingress.enabled }}{{/* Skip this resource unless the user enables ingress. */}}
+apiVersion: networking.k8s.io/v1 # Use the stable Ingress API.
+kind: Ingress # Route external HTTP(S) requests to the Service.
+metadata: # Resource name, labels, and controller annotations are declared below.
+  name: {{ include "learning-web.fullname" . }} # Use the same release-specific name as the Service.
+  labels: # Standard labels identify the Ingress.
+    {{- include "learning-web.labels" . | nindent 4 }}{{/* Attach standard chart labels. */}}
+  {{- with .Values.ingress.annotations }}{{/* Add controller-specific settings when present. */}}
+  annotations: # Controller-specific settings belong in annotations.
+    {{- toYaml . | nindent 4 }}{{/* Render the annotation map for the ingress controller. */}}
+  {{- end }}{{/* End optional ingress annotations. */}}
+spec: # Define routing rules and optional TLS configuration.
+  {{- with .Values.ingress.className }}{{/* Omit the class when the cluster uses its default. */}}
+  ingressClassName: {{ . | quote }} # Select the installed ingress controller class.
+  {{- end }}{{/* End optional ingress class. */}}
+  {{- with .Values.ingress.tls }}{{/* Add TLS hosts and secret names when configured. */}}
+  tls: # Reference TLS Secrets for the listed hostnames.
+    {{- toYaml . | nindent 4 }}{{/* Render each TLS configuration entry. */}}
+  {{- end }}{{/* End optional TLS settings. */}}
+  rules: # Match requests by hostname and then by URL path.
+    {{- range .Values.ingress.hosts }}{{/* Create one routing rule for each configured host. */}}
+    - host: {{ .host | quote }} # Match requests using this DNS hostname.
+      http: # These rules route HTTP requests.
+        paths: # Each path selects a Service backend.
+          {{- range .paths }}{{/* A host may define one or more path rules. */}}
+          - path: {{ .path }} # Match the configured URL path.
+            pathType: {{ .pathType }} # Prefix and Exact are common path matching modes.
+            backend: # Forward matching requests to an in-cluster Service.
+              service: # Identify the Kubernetes Service destination.
+                name: {{ include "learning-web.fullname" $ }} # Route to this release's Service.
+                port: # Use the Service's client-facing port.
+                  number: {{ $.Values.service.port }} # Use the Service port, not the container target port.
+          {{- end }}{{/* End this host's path iteration. */}}
+    {{- end }}{{/* End the host iteration. */}}
+{{- end }}{{/* End the optional Ingress resource. */}}

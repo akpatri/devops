@@ -1,0 +1,12 @@
+apiVersion: v1 # ConfigMaps use the core Kubernetes API.
+kind: ConfigMap # The child emits a separate resource to make dependency rendering visible.
+metadata: # Resource name and labels identify the child chart's object.
+  name: {{ .Release.Name }}-{{ .Chart.Name }} # Child and parent share a release name but have different chart names.
+  labels: # Show labels that connect the object to the child chart and parent release.
+    app.kubernetes.io/name: {{ .Chart.Name }} # Identify the child chart.
+    app.kubernetes.io/instance: {{ .Release.Name }} # Associate this object with the parent release.
+    app.kubernetes.io/managed-by: {{ .Release.Service }} # Record Helm as the manager.
+data: # Store sample child-chart values as text.
+  message: {{ .Values.message | quote }} # Show values scoped to the child chart.
+  childChart: {{ .Chart.Name | quote }} # Contrast child .Chart with the parent chart.
+  parentRelease: {{ .Release.Name | quote }} # Demonstrate that dependencies share a Helm release.

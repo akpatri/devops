@@ -1,0 +1,141 @@
+apiVersion: apps/v1 # Deployments manage ReplicaSets and keep the requested Pods running.
+kind: Deployment # This is the main workload created by the parent chart.
+metadata: # Resource identity and metadata start here.
+  name: {{ include "learning-web.fullname" . }} # Share one stable name with the Service and ConfigMap.
+  labels: # Standard labels support selectors and release inspection.
+    {{- include "learning-web.labels" . | nindent 4 }}{{/* Add chart, application, and release labels. */}}
+spec: # Describe the desired replica count and Pod template.
+  {{- if not .Values.autoscaling.enabled }}{{/* The HPA owns replica count when autoscaling is enabled. */}}
+  replicas: {{ .Values.replicaCount }} # Use the fixed replica count when there is no HPA.
+  {{- end }}{{/* End the fixed-replica branch. */}}
+  selector: # Selectors associate this Deployment with its Pods.
+    matchLabels: # Every label here must remain on the Pod template.
+      {{- include "learning-web.selectorLabels" . | nindent 6 }}{{/* Select exactly the Pods below. */}}
+  template: # Kubernetes creates Pods from this specification.
+    metadata: # Pod metadata is copied to every replica.
+      {{- with .Values.podAnnotations }}{{/* Add Pod annotations only when configured. */}}
+      annotations: # Annotations can trigger integrations such as config reloaders.
+        {{- toYaml . | nindent 8 }}{{/* Serialize arbitrary annotation key/value pairs. */}}
+      {{- end }}{{/* End optional Pod annotations. */}}
+      labels: # Every Pod needs the labels selected by the Deployment and Service.
+        {{- include "learning-web.selectorLabels" . | nindent 8 }}{{/* Keep selector labels on every Pod. */}}
+        {{- with .Values.podLabels }}{{/* Add user-provided labels without replacing selectors. */}}
+        {{- toYaml . | nindent 8 }}{{/* Render additional labels as YAML. */}}
+        {{- end }}{{/* End optional extra Pod labels. */}}
+    spec: # Configure identity, scheduling, containers, and volumes for each Pod.
+      serviceAccountName: {{ include "learning-web.serviceAccountName" . }} # Set the Pod identity.
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }} # Control API credential mounting.
+      {{- with (concat .Values.global.imagePullSecrets .Values.imagePullSecrets) }}{{/* Combine global and chart-specific registry secrets. */}}
+      imagePullSecrets: # Name credentials used to pull private container images.
+        {{- toYaml . | nindent 8 }}{{/* Kubernetes expects a list of secret names. */}}
+      {{- end }}{{/* End optional registry credentials. */}}
+      {{- with .Values.podSecurityContext }}{{/* Apply security defaults to all containers in the Pod. */}}
+      securityContext: # Apply process identity and filesystem settings to the Pod.
+        {{- toYaml . | nindent 8 }}{{/* Render the Pod-level security settings. */}}
+      {{- end }}{{/* End optional Pod security context. */}}
+      {{- with .Values.hostAliases }}{{/* Add explicit host-to-IP mappings when requested. */}}
+      hostAliases: # Add optional static host-to-IP mappings.
+        {{- toYaml . | nindent 8 }}{{/* Render each host alias entry. */}}
+      {{- end }}{{/* End optional host aliases. */}}
+      {{- if .Values.hostNetwork }}{{/* Omit host networking unless explicitly enabled. */}}
+      hostNetwork: true # Share the node network namespace only when requested.
+      {{- end }}{{/* End optional host networking. */}}
+      {{- with .Values.dnsPolicy }}{{/* Preserve Kubernetes defaults when the value is empty. */}}
+      dnsPolicy: {{ . | quote }} # Choose the Pod's DNS policy.
+      {{- end }}{{/* End optional DNS policy. */}}
+      {{- with .Values.dnsConfig }}{{/* Add custom resolver settings only when configured. */}}
+      dnsConfig: # Override the Pod resolver only when explicitly configured.
+        {{- toYaml . | nindent 8 }}{{/* Serialize DNS configuration options. */}}
+      {{- end }}{{/* End optional DNS configuration. */}}
+      {{- with .Values.nodeSelector }}{{/* Constrain scheduling to nodes with these labels. */}}
+      nodeSelector: # Restrict placement to nodes carrying these labels.
+        {{- toYaml . | nindent 8 }}{{/* Render the requested node labels. */}}
+      {{- end }}{{/* End optional node selector. */}}
+      {{- with .Values.affinity }}{{/* Add advanced Pod placement rules when supplied. */}}
+      affinity: # Express advanced node or Pod placement preferences.
+        {{- toYaml . | nindent 8 }}{{/* Render node and Pod affinity rules. */}}
+      {{- end }}{{/* End optional affinity. */}}
+      {{- with .Values.tolerations }}{{/* Allow scheduling onto matching tainted nodes. */}}
+      tolerations: # Permit scheduling onto nodes with matching taints.
+        {{- toYaml . | nindent 8 }}{{/* Render all configured tolerations. */}}
+      {{- end }}{{/* End optional tolerations. */}}
+      {{- with .Values.topologySpreadConstraints }}{{/* Spread replicas across nodes or zones when requested. */}}
+      topologySpreadConstraints: # Spread replicas across matching topology domains.
+        {{- toYaml . | nindent 8 }}{{/* Render topology distribution rules. */}}
+      {{- end }}{{/* End optional topology constraints. */}}
+      {{- with .Values.initContainers }}{{/* Run initialization containers before the application. */}}
+      initContainers: # Run setup containers to completion before the main container.
+        {{- toYaml . | nindent 8 }}{{/* Render the user-provided init container list. */}}
+      {{- end }}{{/* End optional init containers. */}}
+      containers: # Main application and any optional sidecars belong in this list.
+        - name: {{ .Chart.Name }} # Identify the primary container.
+          image: {{ include "learning-web.image" . | quote }} # Resolve registry, repository, and tag or digest.
+          imagePullPolicy: {{ .Values.image.pullPolicy }} # Control when Kubernetes pulls the image.
+          {{- with .Values.command }}{{/* Keep the image entrypoint unless an override is supplied. */}}
+          command: # Replace the image entrypoint only when configured.
+            {{- toYaml . | nindent 12 }}{{/* Render the replacement entrypoint as an argument list. */}}
+          {{- end }}{{/* End optional command override. */}}
+          {{- with .Values.args }}{{/* Keep the image's default arguments unless overridden. */}}
+          args: # Replace the image arguments only when configured.
+            {{- toYaml . | nindent 12 }}{{/* Render the replacement argument list. */}}
+          {{- end }}{{/* End optional argument override. */}}
+          securityContext: # Apply container-only privilege and filesystem controls.
+            {{- toYaml .Values.securityContext | nindent 12 }}{{/* Apply container-only security controls. */}}
+          ports: # Declare the named port referenced by the Service.
+            - name: http # The Service points to this named container port.
+              containerPort: {{ .Values.service.targetPort }} # NGINX listens on this container port.
+              protocol: {{ .Values.service.protocol }} # Use the same protocol as the Service.
+          {{- with .Values.env }}{{/* Add literal environment variables when the list is non-empty. */}}
+          env: # Add literal environment variables to the main container.
+            {{- toYaml . | nindent 12 }}{{/* Render each name/value pair. */}}
+          {{- end }}{{/* End optional environment variables. */}}
+          {{- with .Values.envFrom }}{{/* Import variables from existing ConfigMaps or Secrets. */}}
+          envFrom: # Import variables from existing ConfigMaps or Secrets.
+            {{- toYaml . | nindent 12 }}{{/* Render ConfigMapRef and SecretRef entries. */}}
+          {{- end }}{{/* End optional environment sources. */}}
+          {{- with .Values.livenessProbe }}{{/* Restart the container after repeated failed checks. */}}
+          livenessProbe: # Restart the container after repeated failed checks.
+            {{- toYaml . | nindent 12 }}{{/* Render the configured liveness check. */}}
+          {{- end }}{{/* End optional liveness probe. */}}
+          {{- with .Values.readinessProbe }}{{/* Remove the Pod from Service traffic until it is ready. */}}
+          readinessProbe: # Gate Service traffic until the container is ready.
+            {{- toYaml . | nindent 12 }}{{/* Render the configured readiness check. */}}
+          {{- end }}{{/* End optional readiness probe. */}}
+          {{- with .Values.resources }}{{/* Set CPU and memory requests and limits. */}}
+          resources: # Set CPU and memory requests and limits.
+            {{- toYaml . | nindent 12 }}{{/* Render the resource requirements map. */}}
+          {{- end }}{{/* End optional resource requirements. */}}
+          {{- if or .Values.volumeMounts .Values.persistence.enabled }}{{/* Emit the parent list when custom or persistent mounts exist. */}}
+          volumeMounts: # Mount declared Pod volumes into the container.
+            {{- with .Values.volumeMounts }}{{/* Include user-configured mount entries first. */}}
+            {{- toYaml . | nindent 12 }}{{/* Render the configured volume mount list. */}}
+            {{- end }}{{/* End extra volume mounts. */}}
+          {{- if .Values.persistence.enabled }}{{/* Mount the claim created by the optional PVC template. */}}
+            - name: data # This name must match the Pod volume declared below.
+              mountPath: {{ .Values.persistence.mountPath | quote }} # Choose the application's persistent directory.
+          {{- end }}{{/* End optional persistent mount. */}}
+          {{- end }}{{/* End the combined optional volumeMounts list. */}}
+      {{- with .Values.sidecars }}{{/* Add sidecars after the main container in the same list. */}}
+        {{- toYaml . | nindent 8 }}{{/* Render each user-provided sidecar definition. */}}
+      {{- end }}{{/* End optional sidecar containers. */}}
+      {{- if or .Values.volumes .Values.persistence.enabled }}{{/* Emit the parent list when custom or persistent volumes exist. */}}
+      volumes: # Kubernetes mounts these sources into the Pod.
+        {{- range .Values.volumes }}{{/* Render every configured volume entry. */}}
+        - name: {{ .name }} # Match this value to a volumeMount name.
+          {{- if .configMap }}{{/* Use special handling so an empty name resolves to this release's ConfigMap. */}}
+          configMap: # A ConfigMap volume exposes each data key as a file.
+            name: {{ .configMap.name | default (include "learning-web.fullname" $) }} # Default to the generated ConfigMap.
+            {{- with .configMap.items }}{{/* Select only requested keys when items are configured. */}}
+            items: # Restrict the volume to the selected ConfigMap keys.
+              {{- toYaml . | nindent 14 }}{{/* Render the ConfigMap key-to-path mappings. */}}
+            {{- end }}{{/* End optional selected ConfigMap items. */}}
+          {{- else }}{{/* Render emptyDir, Secret, PVC, and other volume source types directly. */}}
+          {{- toYaml (omit . "name") | nindent 10 }}{{/* Omit name here because it was emitted above. */}}
+          {{- end }}{{/* End ConfigMap-specific volume handling. */}}
+        {{- end }}{{/* End volume list iteration. */}}
+      {{- if .Values.persistence.enabled }}{{/* Add the PVC source when persistence is enabled. */}}
+        - name: data # Match the persistent volume mount in the container.
+          persistentVolumeClaim: # Attach the claim rendered by pvc.yaml.
+            claimName: {{ include "learning-web.fullname" . }} # Match the claim name from pvc.yaml.
+      {{- end }}{{/* End optional persistent volume. */}}
+      {{- end }}{{/* End the combined optional volumes list. */}}

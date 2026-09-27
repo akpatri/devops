@@ -1,0 +1,4 @@
+apiVersion: v1 # Namespaces use the core Kubernetes API.
+kind: Namespace # Create an isolated place for the learning resources.
+metadata: # Resource identity starts here.
+  name: learning-resources # Use this namespace name in the other manifests.

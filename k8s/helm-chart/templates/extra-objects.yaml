@@ -1,0 +1,4 @@
+{{- range .Values.extraObjects }}{{/* Iterate through user-supplied additional Kubernetes objects. */}}
+--- # Start a separate YAML document for the next extra object.
+{{ toYaml . }}{{/* Serialize the object map as a Kubernetes manifest. */}}
+{{- end }}{{/* End the extra object iteration. */}}

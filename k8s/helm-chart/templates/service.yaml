@@ -1,0 +1,19 @@
+apiVersion: v1 # Services use the core Kubernetes API.
+kind: Service # Give the Pods a stable virtual IP and DNS name.
+metadata: # Resource name, labels, and annotations are declared below.
+  name: {{ include "learning-web.fullname" . }} # Match the related Deployment and ConfigMap name.
+  labels: # Standard labels identify the Service.
+    {{- include "learning-web.labels" . | nindent 4 }}{{/* Attach standard chart labels. */}}
+  {{- with .Values.service.annotations }}{{/* Include annotations only when configured. */}}
+  annotations: # Optional Service integrations can read these annotations.
+    {{- toYaml . | nindent 4 }}{{/* Render the annotation map as YAML. */}}
+  {{- end }}{{/* End the optional annotations block. */}}
+spec: # Configure the client-facing port and Pod selector.
+  type: {{ .Values.service.type }} # ClusterIP is internal; NodePort and LoadBalancer expose it differently.
+  ports: # Define the stable port clients connect to.
+    - name: http # Give the Service port a stable name.
+      port: {{ .Values.service.port }} # Expose this port on the Service virtual IP.
+      targetPort: http # Resolve this to the container port named http in the Deployment.
+      protocol: {{ .Values.service.protocol }} # Select TCP, UDP, or SCTP as appropriate.
+  selector: # Send traffic only to Pods with these labels.
+    {{- include "learning-web.selectorLabels" . | nindent 4 }}{{/* Route traffic only to this release's Pods. */}}

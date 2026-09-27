@@ -1,0 +1,11 @@
+Learning release: {{ .Release.Name }}{{/* Display the release name after installation. */}}
+Namespace: {{ .Release.Namespace }}{{/* Show the namespace used by this release. */}}
+Service: {{ include "learning-web.fullname" . }}:{{ .Values.service.port }}{{/* Show the generated Service address and port. */}}
+
+Try a local port-forward:{{/* This command works without an Ingress controller. */}}
+  kubectl -n {{ .Release.Namespace }} port-forward service/{{ include "learning-web.fullname" . }} 8080:{{ .Values.service.port }}{{/* Map the Service port to localhost:8080. */}}
+Then visit http://localhost:8080{{/* Open the page while port-forward is running. */}}
+
+To inspect values and rendered resources:{{/* Helm stores the selected values and rendered manifest. */}}
+  helm get values {{ .Release.Name }} --all{{/* Print defaults merged with release overrides. */}}
+  helm get manifest {{ .Release.Name }}{{/* Print the resources Helm manages for the release. */}}

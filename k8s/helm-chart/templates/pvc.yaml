@@ -1,0 +1,21 @@
+{{- if .Values.persistence.enabled }}{{/* Skip storage resources unless persistence is enabled. */}}
+apiVersion: v1 # PersistentVolumeClaims use the core Kubernetes API.
+kind: PersistentVolumeClaim # Request durable storage from the cluster.
+metadata: # Resource name, labels, and annotations are declared below.
+  name: {{ include "learning-web.fullname" . }} # Match the claim reference in the Deployment.
+  labels: # Standard labels identify the claim.
+    {{- include "learning-web.labels" . | nindent 4 }}{{/* Attach standard chart labels. */}}
+  {{- with .Values.persistence.annotations }}{{/* Add storage-controller metadata when configured. */}}
+  annotations: # Storage integrations may use these provisioning hints.
+    {{- toYaml . | nindent 4 }}{{/* Render backup or provisioning annotations. */}}
+  {{- end }}{{/* End optional PVC annotations. */}}
+spec: # Describe requested storage behavior and capacity.
+  accessModes: # Ask for the configured volume access mode.
+    {{- toYaml .Values.persistence.accessModes | nindent 4 }}{{/* Request the configured mount access mode. */}}
+  {{- with (default .Values.global.storageClass .Values.persistence.storageClass) }}{{/* Leave unset to use the cluster default. */}}
+  storageClassName: {{ . | quote }} # Select a named StorageClass when one is configured.
+  {{- end }}{{/* End optional StorageClass selection. */}}
+  resources: # Express the capacity requested from the provisioner.
+    requests: # Kubernetes schedules a volume that meets these capacity requests.
+      storage: {{ .Values.persistence.size | quote }} # Request the configured capacity.
+{{- end }}{{/* End the optional PVC resource. */}}
